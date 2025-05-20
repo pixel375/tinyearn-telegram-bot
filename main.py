@@ -8,6 +8,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 app = Flask(__name__)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
+# Register command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Welcome to TinyEarn!\nUse /shorten <url> or /ref to get started.")
 
@@ -18,12 +19,17 @@ async def ref(update: Update, context: ContextTypes.DEFAULT_TYPE):
 bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CommandHandler("ref", ref))
 
+# Async init wrapper for Flask route
+async def handle_update(data):
+    await bot_app.initialize()
+    update = Update.de_json(data, bot_app.bot)
+    await bot_app.process_update(update)
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    asyncio.run(bot_app.process_update(update))  # This line is crucial
+    data = request.get_json(force=True)
+    asyncio.run(handle_update(data))
     return "ok", 200
 
 if __name__ == "__main__":
-    bot_app.initialize()
     app.run(host="0.0.0.0", port=10000)
